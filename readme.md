@@ -25,4 +25,4 @@ docker run
     -v /var/run/docker.sock:/var/run/docker.sock
     ehazlett/conduit -r ehazlett/go-demo -t s3cr3+
 ```
-Then add a webhook url to http://<your-conduit-host>:<your-conduit-port>/?token=<token>
+Then add a webhook url to `http://<your-conduit-host>:<your-conduit-port>/?token=<token>`
