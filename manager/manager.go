@@ -148,22 +148,50 @@ func (m *Manager) deploy(repo string) error {
 				return err
 			}
 
+			portBinds := false
+
+			if len(cfg.HostConfig.PortBindings) > 0 {
+				portBinds = true
+			}
+			// check for port bindings; if exist, stop/remove container first
+			if portBinds {
+				if err := m.removeContainer(c.Id); err != nil {
+					return err
+				}
+			}
+
 			if err := docker.StartContainer(id, cfg.HostConfig); err != nil {
 				return err
 			}
 
-			log.Debugf("%s: stopping old container", cId)
-			if err := docker.StopContainer(c.Id, 5); err != nil {
-				return err
-			}
-
-			log.Debugf("%s: removing old container", cId)
-			if err := docker.RemoveContainer(c.Id, true); err != nil {
-				return err
+			if !portBinds {
+				if err := m.removeContainer(c.Id); err != nil {
+					return err
+				}
 			}
 
 			log.Infof("%s: deployed new container", cId)
 		}
+	}
+
+	return nil
+}
+
+func (m *Manager) removeContainer(id string) error {
+	cId := id[:10]
+	docker, err := dockerclient.NewDockerClient(m.dockerUrl, nil)
+	if err != nil {
+		return err
+	}
+
+	log.Debugf("%s: stopping old container", cId)
+	if err := docker.StopContainer(id, 5); err != nil {
+		return err
+	}
+
+	log.Debugf("%s: removing old container", cId)
+	if err := docker.RemoveContainer(id, true); err != nil {
+		return err
 	}
 
 	return nil
