@@ -16,7 +16,7 @@ func run(c *cli.Context) {
 
 	m, err := manager.NewManager(c.StringSlice("repo"),
 		c.String("docker"), c.String("auth-username"), c.String("auth-password"),
-		c.String("auth-email"), c.Bool("debug"))
+		c.String("auth-email"), c.String("token"), c.Bool("debug"))
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -28,7 +28,7 @@ func main() {
 	app := cli.NewApp()
 
 	app.Name = "conduit"
-	app.Usage = "docker deployer"
+	app.Usage = "docker deployment system"
 	app.Version = VERSION
 	app.Action = run
 	app.Flags = []cli.Flag{
@@ -38,24 +38,34 @@ func main() {
 			Value: &cli.StringSlice{},
 		},
 		cli.StringFlag{
-			Name:  "docker, d",
-			Usage: "URL to Docker",
-			Value: "unix:///var/run/docker.sock",
+			Name:   "docker, d",
+			Usage:  "URL to Docker",
+			Value:  "unix:///var/run/docker.sock",
+			EnvVar: "DOCKER_HOST",
 		},
 		cli.StringFlag{
-			Name:  "auth-username, u",
-			Usage: "docker auth username (optional)",
-			Value: "",
+			Name:   "auth-username, u",
+			Usage:  "docker auth username (optional)",
+			Value:  "",
+			EnvVar: "DOCKER_AUTH_USERNAME",
 		},
 		cli.StringFlag{
-			Name:  "auth-password, p",
-			Usage: "docker auth password (optional)",
-			Value: "",
+			Name:   "auth-password, p",
+			Usage:  "docker auth password (optional)",
+			Value:  "",
+			EnvVar: "DOCKER_AUTH_PASSWORD",
 		},
 		cli.StringFlag{
-			Name:  "auth-email, e",
-			Usage: "docker auth email (optional)",
-			Value: "",
+			Name:   "auth-email, e",
+			Usage:  "docker auth email (optional)",
+			Value:  "",
+			EnvVar: "DOCKER_AUTH_EMAIL",
+		},
+		cli.StringFlag{
+			Name:   "token, t",
+			Usage:  "webhook token",
+			Value:  "",
+			EnvVar: "TOKEN",
 		},
 		cli.BoolFlag{
 			Name:  "debug, D",

@@ -16,6 +16,7 @@ type (
 	Manager struct {
 		repoWhitelist []string
 		dockerUrl     string
+		token         string
 		authUsername  string
 		authPassword  string
 		authEmail     string
@@ -28,7 +29,7 @@ type (
 	Info struct{}
 )
 
-func NewManager(repoWhitelist []string, dockerUrl string, authUsername string, authPassword string, authEmail string, debug bool) (*Manager, error) {
+func NewManager(repoWhitelist []string, dockerUrl string, authUsername string, authPassword string, authEmail string, token string, debug bool) (*Manager, error) {
 	if debug {
 		log.SetLevel(log.DebugLevel)
 	}
@@ -76,7 +77,7 @@ func (m *Manager) Run() {
 	r := mux.NewRouter()
 
 	r.HandleFunc("/", m.index).Methods("GET")
-	r.HandleFunc("/", m.receive).Methods("POST")
+	r.HandleFunc("/", m.receive).Methods("POST").Queries("token", m.token)
 	http.Handle("/", r)
 
 	log.Infof("starting conduit")
