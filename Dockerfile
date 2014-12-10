@@ -1,4 +1,5 @@
-FROM golang:1.3.3-onbuild
+FROM debian:jessie
+COPY conduit /bin/conduit
 EXPOSE 8080
-ENTRYPOINT ["/go/src/app/conduit"]
+ENTRYPOINT ["/bin/conduit"]
 CMD ["-h"]
