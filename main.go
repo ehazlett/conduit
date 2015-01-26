@@ -9,11 +9,15 @@ import (
 )
 
 const (
-	VERSION = "0.0.1"
+	VERSION = "0.0.2"
 )
 
 func run(c *cli.Context) {
 
+	if len(c.StringSlice("repo")) == 0 {
+		cli.ShowAppHelp(c)
+		log.Fatal("you must specify at least 1 repo")
+	}
 	m, err := manager.NewManager(c.StringSlice("repo"),
 		c.String("docker"), c.String("auth-username"), c.String("auth-password"),
 		c.String("auth-email"), c.String("token"), c.Bool("debug"))
@@ -28,6 +32,8 @@ func main() {
 	app := cli.NewApp()
 
 	app.Name = "conduit"
+	app.Author = "@ehazlett"
+	app.Email = "ejhazlett@gmail.com"
 	app.Usage = "docker deployment system"
 	app.Version = VERSION
 	app.Action = run
