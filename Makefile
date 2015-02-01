@@ -5,10 +5,13 @@ TAG=${1:-latest}
 
 all: build
 
-build:
+deps:
+	@go get -d ./...
+
+build: deps
 	@go build -a -tags 'netgo' -ldflags '-w -linkmode external -extldflags -static' .
 
 image: build
 	@docker build -t ehazlett/conduit:$(TAG) .
 
-.PHONY: build
+.PHONY: build image deps
