@@ -13,7 +13,7 @@ deps:
 clean:
 	@rm -rf Godeps/_workspace $(NAME)
 
-build:
+build: deps
 	@godep go build -a -tags 'netgo' -ldflags '-w -linkmode external -extldflags -static' .
 
 image: build
