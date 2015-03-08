@@ -1,5 +1,4 @@
 FROM scratch
-COPY conduit /bin/conduit
-EXPOSE 8080
+ADD conduit /bin/conduit
 ENTRYPOINT ["/bin/conduit"]
 CMD ["-h"]

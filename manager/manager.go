@@ -191,7 +191,7 @@ func (m *Manager) removeContainer(id string) error {
 	}
 
 	log.Debugf("%s: removing old container", cId)
-	if err := docker.RemoveContainer(id, true); err != nil {
+	if err := docker.RemoveContainer(id, true, true); err != nil {
 		return err
 	}
 

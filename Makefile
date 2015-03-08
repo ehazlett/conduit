@@ -1,17 +1,29 @@
 CGO_ENABLED=0
 GOOS=linux
 GOARCH=amd64
-TAG=${1:-latest}
+TAG=${TAG:-latest}
+NAME=conduit
+REPO=ehazlett/$(NAME)
 
-all: build
+all: deps build
 
 deps:
-	@go get -d ./...
+	@godep restore
 
-build: deps
-	@go build -a -tags 'netgo' -ldflags '-w -linkmode external -extldflags -static' .
+clean:
+	@rm -rf Godeps/_workspace $(NAME)
+
+build:
+	@godep go build -a -tags 'netgo' -ldflags '-w -linkmode external -extldflags -static' .
 
 image: build
-	@docker build -t ehazlett/conduit:$(TAG) .
+	@echo Building $(NAME) image $(TAG)
+	@docker build -t $(REPO):$(TAG) .
 
-.PHONY: build image deps
+release: deps build image
+	@docker push $(REPO):$(TAG)
+
+test: clean 
+	@godep go test -v ./...
+
+.PHONY: all deps build clean image test release

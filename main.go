@@ -33,7 +33,7 @@ func main() {
 
 	app.Name = "conduit"
 	app.Author = "@ehazlett"
-	app.Email = "ejhazlett@gmail.com"
+	app.Email = ""
 	app.Usage = "docker deployment system"
 	app.Version = VERSION
 	app.Action = run
