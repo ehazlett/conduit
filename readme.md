@@ -27,3 +27,9 @@ docker run
 ```
 Then add a webhook url to `http://<your-conduit-host>:<your-conduit-port>?token=<token>`
 
+# Testing
+To simulate a webhook using curl:
+
+```
+curl -d '{"repository": {"repo_name": "namespace/reponame"}}' http://localhost:8080?token=yourtoken
+```

@@ -60,6 +60,8 @@ func (m *Manager) receive(w http.ResponseWriter, r *http.Request) {
 
 	repoName := data.Repository.RepoName
 
+	log.Debugf("webhook received: name=%s", repoName)
+
 	if !m.isValidRepo(repoName) {
 		http.Error(w, fmt.Sprintf("%s not on whitelist", repoName), http.StatusBadRequest)
 		return
