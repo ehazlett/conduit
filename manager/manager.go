@@ -6,20 +6,38 @@ import (
 	"net/http"
 	"strings"
 
+	log "github.com/Sirupsen/logrus"
 	"github.com/ehazlett/conduit/hub"
 	"github.com/gorilla/mux"
 	"github.com/samalba/dockerclient"
-	log "github.com/sirupsen/logrus"
 )
 
 type (
 	Manager struct {
 		repoWhitelist []string
 		dockerUrl     string
+		tlsCaCert     string
+		tlsCert       string
+		tlsKey        string
+		allowInsecure bool
 		token         string
 		authUsername  string
 		authPassword  string
 		authEmail     string
+	}
+
+	ManagerConfig struct {
+		RepoWhitelist []string
+		DockerURL     string
+		TLSCACert     string
+		TLSCert       string
+		TLSKey        string
+		AllowInsecure bool
+		AuthUsername  string
+		AuthPassword  string
+		AuthEmail     string
+		Token         string
+		Debug         bool
 	}
 
 	HookResponse struct {
@@ -29,17 +47,21 @@ type (
 	Info struct{}
 )
 
-func NewManager(repoWhitelist []string, dockerUrl string, authUsername string, authPassword string, authEmail string, token string, debug bool) (*Manager, error) {
-	if debug {
+func NewManager(cfg *ManagerConfig) (*Manager, error) {
+	if cfg.Debug {
 		log.SetLevel(log.DebugLevel)
 	}
 
 	return &Manager{
-		repoWhitelist: repoWhitelist,
-		dockerUrl:     dockerUrl,
-		authUsername:  authUsername,
-		authPassword:  authPassword,
-		authEmail:     authEmail,
+		repoWhitelist: cfg.RepoWhitelist,
+		dockerUrl:     cfg.DockerURL,
+		tlsCaCert:     cfg.TLSCACert,
+		tlsCert:       cfg.TLSCert,
+		tlsKey:        cfg.TLSKey,
+		allowInsecure: cfg.AllowInsecure,
+		authUsername:  cfg.AuthUsername,
+		authPassword:  cfg.AuthPassword,
+		authEmail:     cfg.AuthEmail,
 	}, nil
 }
 
@@ -119,7 +141,13 @@ func (m *Manager) authConfig() *dockerclient.AuthConfig {
 }
 
 func (m *Manager) deploy(repo string) error {
-	docker, err := dockerclient.NewDockerClient(m.dockerUrl, nil)
+	docker, err := GetDockerClient(
+		m.dockerUrl,
+		m.tlsCaCert,
+		m.tlsCert,
+		m.tlsKey,
+		m.allowInsecure,
+	)
 	if err != nil {
 		return err
 	}
@@ -145,6 +173,9 @@ func (m *Manager) deploy(repo string) error {
 			if err != nil {
 				return err
 			}
+
+			// reset hostname to get new id
+			cfg.Config.Hostname = ""
 
 			id, err := docker.CreateContainer(cfg.Config, "")
 			if err != nil {
@@ -182,7 +213,13 @@ func (m *Manager) deploy(repo string) error {
 
 func (m *Manager) removeContainer(id string) error {
 	cId := id[:10]
-	docker, err := dockerclient.NewDockerClient(m.dockerUrl, nil)
+	docker, err := GetDockerClient(
+		m.dockerUrl,
+		m.tlsCaCert,
+		m.tlsCert,
+		m.tlsKey,
+		m.allowInsecure,
+	)
 	if err != nil {
 		return err
 	}

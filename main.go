@@ -3,13 +3,13 @@ package main
 import (
 	"os"
 
+	log "github.com/Sirupsen/logrus"
 	"github.com/codegangsta/cli"
 	"github.com/ehazlett/conduit/manager"
-	log "github.com/sirupsen/logrus"
 )
 
 const (
-	VERSION = "0.0.2"
+	VERSION = "0.0.3"
 )
 
 func run(c *cli.Context) {
@@ -18,9 +18,20 @@ func run(c *cli.Context) {
 		cli.ShowAppHelp(c)
 		log.Fatal("you must specify at least 1 repo")
 	}
-	m, err := manager.NewManager(c.StringSlice("repo"),
-		c.String("docker"), c.String("auth-username"), c.String("auth-password"),
-		c.String("auth-email"), c.String("token"), c.Bool("debug"))
+	managerConfig := &manager.ManagerConfig{
+		RepoWhitelist: c.StringSlice("repo"),
+		DockerURL:     c.String("docker"),
+		TLSCACert:     c.String("tls-ca-cert"),
+		TLSCert:       c.String("tls-cert"),
+		TLSKey:        c.String("tls-key"),
+		AllowInsecure: c.Bool("allow-insecure"),
+		AuthUsername:  c.String("auth-username"),
+		AuthPassword:  c.String("auth-password"),
+		AuthEmail:     c.String("auth-email"),
+		Token:         c.String("token"),
+		Debug:         c.Bool("debug"),
+	}
+	m, err := manager.NewManager(managerConfig)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -34,7 +45,7 @@ func main() {
 	app.Name = "conduit"
 	app.Author = "@ehazlett"
 	app.Email = ""
-	app.Usage = "docker deployment system"
+	app.Usage = "docker auto-deployment system"
 	app.Version = VERSION
 	app.Action = run
 	app.Flags = []cli.Flag{
@@ -48,6 +59,25 @@ func main() {
 			Usage:  "URL to Docker",
 			Value:  "unix:///var/run/docker.sock",
 			EnvVar: "DOCKER_HOST",
+		},
+		cli.StringFlag{
+			Name:  "tls-ca-cert",
+			Usage: "TLS CA Certificate",
+			Value: "",
+		},
+		cli.StringFlag{
+			Name:  "tls-cert",
+			Usage: "TLS Certificate",
+			Value: "",
+		},
+		cli.StringFlag{
+			Name:  "tls-key",
+			Usage: "TLS Key",
+			Value: "",
+		},
+		cli.BoolFlag{
+			Name:  "allow-insecure",
+			Usage: "Allow insecure communication to daemon",
 		},
 		cli.StringFlag{
 			Name:   "auth-username, u",
