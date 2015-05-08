@@ -27,6 +27,11 @@ docker run
 ```
 Then add a webhook url to `http://<your-conduit-host>:<your-conduit-port>?token=<token>`
 
+You can also specify a list of tags for deploy.  Conduit will only deploy
+and rotate containers that are using that tag.  For example, if you have
+containers with both `v1` and `v2` tags running, if you specify `v2` as a tag
+in Conduit, it will only deploy the `v2` containers when receiving a webhook.
+
 # Testing
 To simulate a webhook using curl:
 
