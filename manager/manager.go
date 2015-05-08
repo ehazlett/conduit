@@ -8,6 +8,7 @@ import (
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/ehazlett/conduit/hub"
+	"github.com/ehazlett/conduit/version"
 	"github.com/gorilla/mux"
 	"github.com/samalba/dockerclient"
 )
@@ -15,6 +16,7 @@ import (
 type (
 	Manager struct {
 		repoWhitelist []string
+		tags          []string
 		dockerUrl     string
 		tlsCaCert     string
 		tlsCert       string
@@ -28,6 +30,7 @@ type (
 
 	ManagerConfig struct {
 		RepoWhitelist []string
+		Tags          []string
 		DockerURL     string
 		TLSCACert     string
 		TLSCert       string
@@ -54,6 +57,7 @@ func NewManager(cfg *ManagerConfig) (*Manager, error) {
 
 	return &Manager{
 		repoWhitelist: cfg.RepoWhitelist,
+		tags:          cfg.Tags,
 		dockerUrl:     cfg.DockerURL,
 		tlsCaCert:     cfg.TLSCACert,
 		tlsCert:       cfg.TLSCert,
@@ -104,8 +108,9 @@ func (m *Manager) Run() {
 	r.HandleFunc("/", m.receive).Methods("POST").Queries("token", m.token)
 	http.Handle("/", r)
 
-	log.Infof("starting conduit")
+	log.Infof("starting conduit v%s", version.Version)
 	log.Infof("repos: %v", m.repoWhitelist)
+	log.Infof("tags: %v", m.tags)
 
 	if err := http.ListenAndServe(":8080", nil); err != nil {
 		log.Fatalf("unable to start: %s", err)
@@ -140,6 +145,16 @@ func (m *Manager) authConfig() *dockerclient.AuthConfig {
 	}
 }
 
+func (m *Manager) validTag(tag string) bool {
+	for _, t := range m.tags {
+		if tag == t {
+			return true
+		}
+	}
+
+	return false
+}
+
 func (m *Manager) deploy(repo string) error {
 	docker, err := GetDockerClient(
 		m.dockerUrl,
@@ -160,7 +175,12 @@ func (m *Manager) deploy(repo string) error {
 	authConfig := m.authConfig()
 
 	for _, c := range containers {
-		if strings.Contains(c.Image, repo) {
+		img := strings.Split(c.Image, ":")
+		image := strings.Join(img[:len(img)-1], "")
+		tag := img[len(img)-1]
+		if image == repo && m.validTag(tag) {
+			log.Debugf("deploying: image=%s tag=%s", image, tag)
+			return nil
 			cId := c.Id[:10]
 			log.Infof("deploying new image for container: %s", cId)
 

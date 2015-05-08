@@ -6,10 +6,7 @@ import (
 	log "github.com/Sirupsen/logrus"
 	"github.com/codegangsta/cli"
 	"github.com/ehazlett/conduit/manager"
-)
-
-const (
-	VERSION = "0.0.3"
+	"github.com/ehazlett/conduit/version"
 )
 
 func run(c *cli.Context) {
@@ -18,8 +15,16 @@ func run(c *cli.Context) {
 		cli.ShowAppHelp(c)
 		log.Fatal("you must specify at least 1 repo")
 	}
+
+	tags := c.StringSlice("tag")
+	// add default tag if not present
+	if len(tags) == 0 {
+		tags = []string{"latest"}
+	}
+
 	managerConfig := &manager.ManagerConfig{
 		RepoWhitelist: c.StringSlice("repo"),
+		Tags:          tags,
 		DockerURL:     c.String("docker"),
 		TLSCACert:     c.String("tls-ca-cert"),
 		TLSCert:       c.String("tls-cert"),
@@ -31,6 +36,7 @@ func run(c *cli.Context) {
 		Token:         c.String("token"),
 		Debug:         c.Bool("debug"),
 	}
+
 	m, err := manager.NewManager(managerConfig)
 	if err != nil {
 		log.Fatal(err)
@@ -46,14 +52,9 @@ func main() {
 	app.Author = "@ehazlett"
 	app.Email = ""
 	app.Usage = "docker auto-deployment system"
-	app.Version = VERSION
+	app.Version = version.Version
 	app.Action = run
 	app.Flags = []cli.Flag{
-		cli.StringSliceFlag{
-			Name:  "repo, r",
-			Usage: "repo for whitelist",
-			Value: &cli.StringSlice{},
-		},
 		cli.StringFlag{
 			Name:   "docker, d",
 			Usage:  "URL to Docker",
@@ -78,6 +79,16 @@ func main() {
 		cli.BoolFlag{
 			Name:  "allow-insecure",
 			Usage: "Allow insecure communication to daemon",
+		},
+		cli.StringSliceFlag{
+			Name:  "repo, r",
+			Usage: "repo for whitelist",
+			Value: &cli.StringSlice{},
+		},
+		cli.StringSliceFlag{
+			Name:  "tag",
+			Usage: "list of container tags for the repo to deploy",
+			Value: &cli.StringSlice{},
 		},
 		cli.StringFlag{
 			Name:   "auth-username, u",
