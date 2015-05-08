@@ -180,7 +180,6 @@ func (m *Manager) deploy(repo string) error {
 		tag := img[len(img)-1]
 		if image == repo && m.validTag(tag) {
 			log.Debugf("deploying: image=%s tag=%s", image, tag)
-			return nil
 			cId := c.Id[:10]
 			log.Infof("deploying new image for container: %s", cId)
 
