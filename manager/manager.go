@@ -183,8 +183,9 @@ func (m *Manager) deploy(repo string) error {
 			cId := c.Id[:10]
 			log.Infof("deploying new image for container: %s", cId)
 
-			log.Debugf("%s: pulling new image", cId)
-			docker.PullImage(repo, authConfig)
+			imgName := fmt.Sprintf("%s:%s", repo, tag)
+			log.Debugf("%s: pulling new image: repo=%s", cId, imgName)
+			docker.PullImage(imgName, authConfig)
 
 			log.Debugf("%s: launching new container", cId)
 
