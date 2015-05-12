@@ -32,7 +32,6 @@ func GetTLSConfig(caCert, cert, key []byte, allowInsecure bool) (*tls.Config, er
 }
 
 func GetDockerClient(dockerUrl, tlsCaCert, tlsCert, tlsKey string, allowInsecure bool) (*dockerclient.DockerClient, error) {
-	// only load env vars if no args
 	// check environment for docker client config
 	envDockerHost := os.Getenv("DOCKER_HOST")
 	if dockerUrl == "" && envDockerHost != "" {
