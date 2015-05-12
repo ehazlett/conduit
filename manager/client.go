@@ -38,7 +38,6 @@ func GetDockerClient(dockerUrl, tlsCaCert, tlsCert, tlsKey string, allowInsecure
 		dockerUrl = envDockerHost
 	}
 
-	// only load env vars if no args
 	envDockerCertPath := os.Getenv("DOCKER_CERT_PATH")
 	envDockerTlsVerify := os.Getenv("DOCKER_TLS_VERIFY")
 	if tlsCaCert == "" && envDockerCertPath != "" && envDockerTlsVerify != "" {
