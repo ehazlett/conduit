@@ -10,6 +10,7 @@ Docker.
 docker run
     -d
     --name conduit
+    -p 8080:8080
     -v /var/run/docker.sock:/var/run/docker.sock
     ehazlett/conduit -r <repo-name> -t <token>
 ```
@@ -22,6 +23,7 @@ Example:
 docker run
     -d
     --name conduit
+    -p 8080:8080
     -v /var/run/docker.sock:/var/run/docker.sock
     ehazlett/conduit -r ehazlett/go-demo -t s3cr3+
 ```
