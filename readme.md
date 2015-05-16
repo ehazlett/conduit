@@ -36,5 +36,5 @@ in Conduit, it will only deploy the `v2` containers when receiving a webhook.
 To simulate a webhook using curl:
 
 ```
-curl -d '{"repository": {"repo_name": "namespace/reponame"}}' http://localhost:8080?token=yourtoken
+curl -d '{"repository": {"repo_name": "namespace/reponame"}}' http://<docker-host-ip>:8080?token=yourtoken
 ```
