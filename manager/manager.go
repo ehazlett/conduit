@@ -100,8 +100,10 @@ func (m *Manager) receive(w http.ResponseWriter, r *http.Request) {
 		responsePayload.State = "error"
 		responsePayload.Description = fmt.Sprintf("%s is not on whitelist", repoName)
 		w.WriteHeader(http.StatusBadRequest)
-		if err := m.sendResponse(responsePayload, data.CallbackUrl); err != nil {
-			log.Error(err)
+		if data.CallbackUrl != "" {
+			if err := m.sendResponse(responsePayload, data.CallbackUrl); err != nil {
+				log.Error(err)
+			}
 		}
 		return
 	}
@@ -111,8 +113,10 @@ func (m *Manager) receive(w http.ResponseWriter, r *http.Request) {
 		responsePayload.State = "error"
 		responsePayload.Description = fmt.Sprintf("error deploying: %s", err)
 		w.WriteHeader(http.StatusBadRequest)
-		if err := m.sendResponse(responsePayload, data.CallbackUrl); err != nil {
-			log.Error(err)
+		if data.CallbackUrl != "" {
+			if err := m.sendResponse(responsePayload, data.CallbackUrl); err != nil {
+				log.Error(err)
+			}
 		}
 		return
 	}
@@ -122,8 +126,10 @@ func (m *Manager) receive(w http.ResponseWriter, r *http.Request) {
 	responsePayload.Description = fmt.Sprintf("deployed %s", repoName)
 	w.WriteHeader(http.StatusOK)
 
-	if err := m.sendResponse(responsePayload, data.CallbackUrl); err != nil {
-		log.Error(err)
+	if data.CallbackUrl != "" {
+		if err := m.sendResponse(responsePayload, data.CallbackUrl); err != nil {
+			log.Error(err)
+		}
 	}
 }
 
