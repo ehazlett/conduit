@@ -1,6 +1,7 @@
 package manager
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -15,6 +16,7 @@ import (
 
 type (
 	Manager struct {
+		listenAddr    string
 		repoWhitelist []string
 		tags          []string
 		dockerUrl     string
@@ -29,6 +31,7 @@ type (
 	}
 
 	ManagerConfig struct {
+		ListenAddr    string
 		RepoWhitelist []string
 		Tags          []string
 		DockerURL     string
@@ -56,6 +59,7 @@ func NewManager(cfg *ManagerConfig) (*Manager, error) {
 	}
 
 	return &Manager{
+		listenAddr:    cfg.ListenAddr,
 		repoWhitelist: cfg.RepoWhitelist,
 		tags:          cfg.Tags,
 		dockerUrl:     cfg.DockerURL,
@@ -88,17 +92,39 @@ func (m *Manager) receive(w http.ResponseWriter, r *http.Request) {
 
 	log.Debugf("webhook received: name=%s", repoName)
 
+	responsePayload := &hub.CallbackPayload{
+		TargetUrl: "",
+	}
+
 	if !m.isValidRepo(repoName) {
-		http.Error(w, fmt.Sprintf("%s not on whitelist", repoName), http.StatusBadRequest)
+		responsePayload.State = "error"
+		responsePayload.Description = fmt.Sprintf("%s is not on whitelist", repoName)
+		w.WriteHeader(http.StatusBadRequest)
+		if err := m.sendResponse(responsePayload, data.CallbackUrl); err != nil {
+			log.Error(err)
+		}
 		return
 	}
 
 	if err := m.deploy(repoName); err != nil {
-		http.Error(w, fmt.Sprintf("error deploying: %s", err), http.StatusInternalServerError)
+		w.WriteHeader(http.StatusInternalServerError)
+		responsePayload.State = "error"
+		responsePayload.Description = fmt.Sprintf("error deploying: %s", err)
+		w.WriteHeader(http.StatusBadRequest)
+		if err := m.sendResponse(responsePayload, data.CallbackUrl); err != nil {
+			log.Error(err)
+		}
 		return
 	}
 
-	w.WriteHeader(http.StatusNoContent)
+	// post back to hub
+	responsePayload.State = "success"
+	responsePayload.Description = fmt.Sprintf("deployed %s", repoName)
+	w.WriteHeader(http.StatusOK)
+
+	if err := m.sendResponse(responsePayload, data.CallbackUrl); err != nil {
+		log.Error(err)
+	}
 }
 
 func (m *Manager) Run() {
@@ -112,9 +138,24 @@ func (m *Manager) Run() {
 	log.Infof("repos: %v", m.repoWhitelist)
 	log.Infof("tags: %v", m.tags)
 
-	if err := http.ListenAndServe(":8080", nil); err != nil {
+	if err := http.ListenAndServe(m.listenAddr, nil); err != nil {
 		log.Fatalf("unable to start: %s", err)
 	}
+}
+
+func (m *Manager) sendResponse(payload *hub.CallbackPayload, callbackUrl string) error {
+	log.Debugf("sending response payload: callback=%s", callbackUrl)
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(payload); err != nil {
+		return err
+	}
+
+	if _, err := http.Post(callbackUrl, "application/json", &buf); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (m *Manager) isValidRepo(repo string) bool {

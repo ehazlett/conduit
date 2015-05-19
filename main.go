@@ -23,6 +23,7 @@ func run(c *cli.Context) {
 	}
 
 	managerConfig := &manager.ManagerConfig{
+		ListenAddr:    c.String("listen"),
 		RepoWhitelist: c.StringSlice("repo"),
 		Tags:          tags,
 		DockerURL:     c.String("docker"),
@@ -55,6 +56,11 @@ func main() {
 	app.Version = version.Version
 	app.Action = run
 	app.Flags = []cli.Flag{
+		cli.StringFlag{
+			Name:  "listen, l",
+			Usage: "Address to listen",
+			Value: ":8080",
+		},
 		cli.StringFlag{
 			Name:   "docker, d",
 			Usage:  "URL to Docker",
