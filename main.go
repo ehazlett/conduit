@@ -10,7 +10,6 @@ import (
 )
 
 func run(c *cli.Context) {
-
 	if len(c.StringSlice("repo")) == 0 {
 		cli.ShowAppHelp(c)
 		log.Fatal("you must specify at least 1 repo")
@@ -23,19 +22,24 @@ func run(c *cli.Context) {
 	}
 
 	managerConfig := &manager.ManagerConfig{
-		ListenAddr:    c.String("listen"),
-		RepoWhitelist: c.StringSlice("repo"),
-		Tags:          tags,
-		DockerURL:     c.String("docker"),
-		TLSCACert:     c.String("tls-ca-cert"),
-		TLSCert:       c.String("tls-cert"),
-		TLSKey:        c.String("tls-key"),
-		AllowInsecure: c.Bool("allow-insecure"),
-		AuthUsername:  c.String("auth-username"),
-		AuthPassword:  c.String("auth-password"),
-		AuthEmail:     c.String("auth-email"),
-		Token:         c.String("token"),
-		Debug:         c.Bool("debug"),
+		ListenAddr:      c.String("listen"),
+		RepoWhitelist:   c.StringSlice("repo"),
+		Tags:            tags,
+		DockerURL:       c.String("docker"),
+		TLSCACert:       c.String("tls-ca-cert"),
+		TLSCert:         c.String("tls-cert"),
+		TLSKey:          c.String("tls-key"),
+		AllowInsecure:   c.Bool("allow-insecure"),
+		AuthUsername:    c.String("auth-username"),
+		AuthPassword:    c.String("auth-password"),
+		AuthEmail:       c.String("auth-email"),
+		Token:           c.String("token"),
+		Debug:           c.Bool("debug"),
+		RepoRootDir:     c.String("repo-dir"),
+		RepoWorkDir:     c.String("repo-work-dir"),
+		ServerTLSCACert: c.String("conduit-tls-ca-cert"),
+		ServerTLSCert:   c.String("conduit-tls-cert"),
+		ServerTLSKey:    c.String("conduit-tls-key"),
 	}
 
 	m, err := manager.NewManager(managerConfig)
@@ -43,7 +47,9 @@ func run(c *cli.Context) {
 		log.Fatal(err)
 	}
 
-	m.Run()
+	if err := m.Run(); err != nil {
+		log.Fatal(err)
+	}
 }
 
 func main() {
@@ -52,8 +58,15 @@ func main() {
 	app.Name = "conduit"
 	app.Author = "@ehazlett"
 	app.Email = ""
-	app.Usage = "docker auto-deployment system"
-	app.Version = version.Version
+	app.Usage = "docker deployment system"
+	app.Version = version.FullVersion()
+	app.Before = func(c *cli.Context) error {
+		if c.Bool("debug") {
+			log.SetLevel(log.DebugLevel)
+		}
+
+		return nil
+	}
 	app.Action = run
 	app.Flags = []cli.Flag{
 		cli.StringFlag{
@@ -82,9 +95,34 @@ func main() {
 			Usage: "TLS Key",
 			Value: "",
 		},
+		cli.StringFlag{
+			Name:  "conduit-tls-ca-cert",
+			Usage: "Conduit TLS CA cert",
+			Value: "",
+		},
+		cli.StringFlag{
+			Name:  "conduit-tls-cert",
+			Usage: "Conduit TLS cert",
+			Value: "",
+		},
+		cli.StringFlag{
+			Name:  "conduit-tls-key",
+			Usage: "Conduit TLS key",
+			Value: "",
+		},
 		cli.BoolFlag{
 			Name:  "allow-insecure",
 			Usage: "Allow insecure communication to daemon",
+		},
+		cli.StringFlag{
+			Name:  "repo-dir",
+			Usage: "Repository Directory",
+			Value: ".",
+		},
+		cli.StringFlag{
+			Name:  "repo-work-dir",
+			Usage: "Repository Work Directory",
+			Value: ".",
 		},
 		cli.StringSliceFlag{
 			Name:  "repo, r",
