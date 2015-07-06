@@ -64,7 +64,17 @@ type (
 		Message string `json:"message,omitempty"`
 	}
 
-	Info struct{}
+	Info struct {
+		Name    string `json:"name,omitempty"`
+		Version string `json:"version,omitempty"`
+	}
+)
+
+var (
+	AppInfo = Info{
+		Name:    "conduit",
+		Version: version.FullVersion(),
+	}
 )
 
 func NewManager(cfg *ManagerConfig) (*Manager, error) {
@@ -89,16 +99,17 @@ func NewManager(cfg *ManagerConfig) (*Manager, error) {
 		authUsername:    cfg.AuthUsername,
 		authPassword:    cfg.AuthPassword,
 		authEmail:       cfg.AuthEmail,
+		token:           cfg.Token,
+		repoRootDir:     cfg.RepoRootDir,
+		repoWorkDir:     cfg.RepoWorkDir,
 		serverTLSCACert: cfg.ServerTLSCACert,
 		serverTLSCert:   cfg.ServerTLSCert,
 		serverTLSKey:    cfg.ServerTLSKey,
-		repoRootDir:     cfg.RepoRootDir,
-		repoWorkDir:     cfg.RepoWorkDir,
 	}, nil
 }
 
 func (m *Manager) index(w http.ResponseWriter, r *http.Request) {
-	resp := Info{}
+	resp := AppInfo
 	if err := json.NewEncoder(w).Encode(resp); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -106,6 +117,18 @@ func (m *Manager) index(w http.ResponseWriter, r *http.Request) {
 }
 
 func (m *Manager) receive(w http.ResponseWriter, r *http.Request) {
+	remoteIP := r.Header.Get("X-Forwarded-For")
+	if remoteIP == "" {
+		remoteIP = r.RemoteAddr
+	}
+
+	token := r.Header.Get("X-Token")
+	if token != m.token {
+		http.Error(w, "invalid token", http.StatusUnauthorized)
+		log.Warnf("invalid token: token=%q ip=%s", token, remoteIP)
+		return
+	}
+
 	data := &hub.Webhook{}
 	if err := json.NewDecoder(r.Body).Decode(&data); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -121,6 +144,7 @@ func (m *Manager) receive(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if !m.isValidRepo(repoName) {
+		log.Errorf("invalid repo: name=%s", repoName)
 		responsePayload.State = "error"
 		responsePayload.Description = fmt.Sprintf("%s is not on whitelist", repoName)
 		w.WriteHeader(http.StatusBadRequest)
@@ -133,6 +157,7 @@ func (m *Manager) receive(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := m.deploy(repoName); err != nil {
+		log.Errorf("error deploying: %s", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		responsePayload.State = "error"
 		responsePayload.Description = fmt.Sprintf("error deploying: %s", err)
@@ -144,6 +169,8 @@ func (m *Manager) receive(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
+
+	log.Infof("deployed: repo=%s", repoName)
 
 	// post back to hub
 	responsePayload.State = "success"
@@ -161,7 +188,7 @@ func (m *Manager) Run() error {
 	r := mux.NewRouter()
 
 	r.HandleFunc("/info", m.index).Methods("GET")
-	r.HandleFunc("/hook", m.receive).Methods("POST").Queries("token", m.token)
+	r.HandleFunc("/hook", m.receive).Methods("POST")
 	r.HandleFunc("/{repo:.*}", http.HandlerFunc(m.gitHandler))
 	http.Handle("/", r)
 
@@ -295,8 +322,19 @@ func (m *Manager) deploy(repo string) error {
 
 	for _, c := range containers {
 		img := strings.Split(c.Image, ":")
-		image := strings.Join(img[:len(img)-1], "")
-		tag := img[len(img)-1]
+		var (
+			image string
+			tag   string
+		)
+
+		if len(img) == 1 {
+			image = c.Image
+			tag = "latest"
+		} else {
+			image = strings.Join(img[:len(img)-1], "")
+			tag = img[len(img)-1]
+		}
+
 		if image == repo && m.validTag(tag) {
 			log.Debugf("deploying: image=%s tag=%s", image, tag)
 			cId := c.Id[:10]

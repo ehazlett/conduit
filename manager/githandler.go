@@ -30,7 +30,6 @@ git --work-tree=$WORK_DIR --git-dir=$REPO_DIR checkout -f
 
 cd $WORK_DIR
 
-echo " --> Running Docker Compose"
 OUT=$(docker-compose up -d 2>&1)
 
 exec < /dev/tty
@@ -68,11 +67,17 @@ func setupPostReceiveHook(name, repoDir, workDir string) error {
 
 	hookPath := filepath.Join(repoDir, "hooks", "post-receive")
 	// hook
+	if _, err := os.Stat(hookPath); os.IsNotExist(err) {
+		if err := os.Remove(hookPath); err != nil {
+			return err
+		}
+	}
 	fc, err := os.Create(hookPath)
 	if err != nil {
 		return err
 	}
 	fc.Close()
+
 	// make executable
 	if err := os.Chmod(hookPath, 0755); err != nil {
 		return err
@@ -86,11 +91,18 @@ func setupPostReceiveHook(name, repoDir, workDir string) error {
 
 	deployPath := filepath.Join(repoDir, "hooks", "deploy")
 	// hook
+	if _, err := os.Stat(deployPath); os.IsNotExist(err) {
+		if err := os.Remove(deployPath); err != nil {
+			return err
+		}
+	}
+
 	dc, err := os.Create(deployPath)
 	if err != nil {
 		return err
 	}
 	dc.Close()
+
 	// make executable
 	if err := os.Chmod(deployPath, 0755); err != nil {
 		return err
@@ -136,7 +148,7 @@ func setupPostReceiveHook(name, repoDir, workDir string) error {
 }
 
 func (m *Manager) setupWorkDir(repoDir, repoWorkDir string) error {
-	log.Infof("setting up repo work dir: repodir=%s repoworkdir=%s",
+	log.Debugf("setting up repo work dir: repodir=%s repoworkdir=%s",
 		repoDir,
 		repoWorkDir,
 	)
@@ -183,18 +195,15 @@ func (m *Manager) gitHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// ensure post-receive hook exists
-	postReceiveHookPath := filepath.Join(repoDir, "hooks", "post-receive")
-	if _, err := os.Stat(postReceiveHookPath); os.IsNotExist(err) {
-		if err := setupPostReceiveHook(
-			repoName,
-			repoDir,
-			repoWorkDir,
-		); err != nil {
-			log.Error(err)
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
+	// ensure post-receive hook exists and is updated
+	if err := setupPostReceiveHook(
+		repoName,
+		repoDir,
+		repoWorkDir,
+	); err != nil {
+		log.Error(err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
 	}
 
 	h := &cgi.Handler{
@@ -206,6 +215,15 @@ func (m *Manager) gitHandler(w http.ResponseWriter, r *http.Request) {
 			"GIT_HTTP_EXPORT_ALL=1",
 			"REMOTE_USER=" + username,
 		},
+	}
+
+	remoteIP := r.Header.Get("X-Forwarded-For")
+	if remoteIP == "" {
+		remoteIP = r.RemoteAddr
+	}
+
+	if filepath.Base(r.URL.Path) == "git-receive-pack" {
+		log.Infof("deploy: name=%s ip=%s", repoName, remoteIP)
 	}
 
 	log.Debugf("%s path=%s", r.Method, r.URL.Path)
