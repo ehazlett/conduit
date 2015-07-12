@@ -67,11 +67,17 @@ func setupPostReceiveHook(name, repoDir, workDir string) error {
 
 	hookPath := filepath.Join(repoDir, "hooks", "post-receive")
 	// hook
-	if _, err := os.Stat(hookPath); os.IsNotExist(err) {
+	hf, err := os.Stat(hookPath)
+	if hf != nil {
 		if err := os.Remove(hookPath); err != nil {
 			return err
 		}
+	} else {
+		if !os.IsNotExist(err) {
+			return err
+		}
 	}
+
 	fc, err := os.Create(hookPath)
 	if err != nil {
 		return err
@@ -91,8 +97,13 @@ func setupPostReceiveHook(name, repoDir, workDir string) error {
 
 	deployPath := filepath.Join(repoDir, "hooks", "deploy")
 	// hook
-	if _, err := os.Stat(deployPath); os.IsNotExist(err) {
+	dhf, err := os.Stat(deployPath)
+	if dhf != nil {
 		if err := os.Remove(deployPath); err != nil {
+			return err
+		}
+	} else {
+		if !os.IsNotExist(err) {
 			return err
 		}
 	}

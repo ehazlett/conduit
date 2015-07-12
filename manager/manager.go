@@ -83,6 +83,10 @@ func NewManager(cfg *ManagerConfig) (*Manager, error) {
 	}
 
 	// make root work dir
+	if err := os.MkdirAll(cfg.RepoRootDir, 0755); err != nil {
+		return nil, err
+	}
+
 	if err := os.MkdirAll(cfg.RepoWorkDir, 0755); err != nil {
 		return nil, err
 	}
@@ -245,6 +249,7 @@ func (m *Manager) Run() error {
 			return err
 		}
 	}
+
 	return nil
 }
 
