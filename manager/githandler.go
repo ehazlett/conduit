@@ -13,12 +13,12 @@ import (
 )
 
 var (
-	postReceiveHookTemplate = `#!/bin/bash
+	postReceiveHookTemplate = `#!{{.Shell}}
 REPO_DIR="{{.RepoDir}}"
 /bin/bash {{.RepoDir}}/hooks/deploy
 `
 	deployTemplate = `
-#!/bin/bash
+#!{{.Shell}}
 NAME={{.Name}}
 REPO_DIR="{{.RepoDir}}"
 WORK_DIR="{{.WorkDir}}"
@@ -43,13 +43,36 @@ echo " --> Deploy for $NAME complete"
 `
 )
 
+const (
+	// we must use bash with git-receive-hook
+	shell = "/bin/bash"
+)
+
 type (
 	HookConfig struct {
 		Name    string
 		WorkDir string
 		RepoDir string
+		Shell   string
+	}
+
+	RepositoryInfo struct {
+		Name string
+		Path string
 	}
 )
+
+func (m *Manager) getRepositoryInfo(name string) (*RepositoryInfo, error) {
+	parts := strings.Split(name, "/")
+
+	repoDir := filepath.Join(m.repoRootDir, filepath.Join(parts[1], parts[2]))
+	repoName := filepath.Base(repoDir)
+
+	return &RepositoryInfo{
+		Name: repoName,
+		Path: repoDir,
+	}, nil
+}
 
 func createRepository(repoDir string) error {
 	log.Infof("creating new repository: dir=%s", repoDir)
@@ -129,6 +152,7 @@ func setupPostReceiveHook(name, repoDir, workDir string) error {
 		Name:    name,
 		WorkDir: workDir,
 		RepoDir: repoDir,
+		Shell:   shell,
 	}
 
 	t := template.New("post-receive-hook")
@@ -182,13 +206,53 @@ func (m *Manager) setupWorkDir(repoDir, repoWorkDir string) error {
 	return nil
 }
 
+func (m *Manager) destroyRepo(w http.ResponseWriter, r *http.Request) {
+	name := r.URL.Path
+
+	info, err := m.getRepositoryInfo(name)
+	if err != nil {
+		log.Error(err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	repoName := info.Name
+	repoDir := info.Path
+
+	log.Infof("destroying application: name=%s path=%s", repoName, repoDir)
+
+	c := exec.Command("docker-compose", "kill")
+	c.Dir = repoDir
+
+	if err := c.Run(); err != nil {
+		log.Error(err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	c = exec.Command("docker-compose", "rm", "--force")
+	c.Dir = repoDir
+
+	if err := c.Run(); err != nil {
+		log.Error(err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+}
+
 func (m *Manager) gitHandler(w http.ResponseWriter, r *http.Request) {
 	username := "git"
-	path := r.URL.Path
-	pathParts := strings.Split(path, "/")
+	name := r.URL.Path
 
-	repoDir := filepath.Join(m.repoRootDir, filepath.Join(pathParts[1], pathParts[2]))
-	repoName := filepath.Base(repoDir)
+	info, err := m.getRepositoryInfo(name)
+	if err != nil {
+		log.Error(err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	repoDir := info.Path
+	repoName := info.Name
 
 	// create repo if not exists
 	if _, err := os.Stat(repoDir); os.IsNotExist(err) {
@@ -218,9 +282,10 @@ func (m *Manager) gitHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	h := &cgi.Handler{
-		Path: "/bin/sh",
-		Args: []string{"-c", "git http-backend"},
-		Dir:  ".",
+		Path:   shell,
+		Args:   []string{"-c", "git http-backend"},
+		Dir:    ".",
+		Logger: nil,
 		Env: []string{
 			"GIT_PROJECT_ROOT=" + m.repoRootDir,
 			"GIT_HTTP_EXPORT_ALL=1",
@@ -237,7 +302,8 @@ func (m *Manager) gitHandler(w http.ResponseWriter, r *http.Request) {
 		log.Infof("deploy: name=%s ip=%s", repoName, remoteIP)
 	}
 
-	log.Debugf("%s path=%s", r.Method, r.URL.Path)
+	userAgent := r.Header.Get("User-Agent")
+	log.Debugf("%s path=%s agent=%s", r.Method, r.URL.Path, userAgent)
 
 	h.ServeHTTP(w, r)
 }

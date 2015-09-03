@@ -11,7 +11,7 @@ deps:
 	@godep restore
 
 clean:
-	@rm -rf Godeps/_workspace $(NAME)
+	@rm -f $(NAME)
 
 build: deps
 	@godep go build -a -tags 'netgo' -ldflags '-w -linkmode external -extldflags -static' .

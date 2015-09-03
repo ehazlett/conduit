@@ -9,6 +9,15 @@ import (
 	"github.com/ehazlett/conduit/version"
 )
 
+func getCwd() string {
+	d, err := os.Getwd()
+	if err != nil {
+		log.Fatalf("unable to get working directory: %s", err)
+	}
+
+	return d
+}
+
 func run(c *cli.Context) {
 	if len(c.StringSlice("repo")) == 0 {
 		cli.ShowAppHelp(c)
@@ -117,12 +126,12 @@ func main() {
 		cli.StringFlag{
 			Name:  "repo-dir",
 			Usage: "Repository Directory",
-			Value: ".",
+			Value: getCwd(),
 		},
 		cli.StringFlag{
 			Name:  "repo-work-dir",
 			Usage: "Repository Work Directory",
-			Value: ".",
+			Value: getCwd(),
 		},
 		cli.StringSliceFlag{
 			Name:  "repo, r",

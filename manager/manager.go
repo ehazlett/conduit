@@ -193,6 +193,7 @@ func (m *Manager) Run() error {
 
 	r.HandleFunc("/info", m.index).Methods("GET")
 	r.HandleFunc("/hook", m.receive).Methods("POST")
+	r.HandleFunc("/repo/{repo:.*}", m.destroyRepo).Methods("DELETE")
 	r.HandleFunc("/{repo:.*}", http.HandlerFunc(m.gitHandler))
 	http.Handle("/", r)
 
