@@ -4,26 +4,24 @@ GOARCH=amd64
 TAG=${TAG:-latest}
 NAME=conduit
 REPO=ehazlett/$(NAME)
+COMMIT=`git rev-parse --short HEAD`
 
-all: deps build
-
-deps:
-	@godep restore
+all: build
 
 clean:
 	@rm -f $(NAME)
 
-build: deps
-	@godep go build -a -tags 'netgo' -ldflags '-w -linkmode external -extldflags -static' .
+build:
+	@godep go build -a -tags "netgo static_build" -installsuffix netgo -ldflags "-w -X github.com/ehazlett/conduit/version.GitCommit=$(COMMIT)" .
 
 image: build
 	@echo Building $(NAME) image $(TAG)
 	@docker build -t $(REPO):$(TAG) .
 
-release: deps build image
+release: build image
 	@docker push $(REPO):$(TAG)
 
 test: clean 
 	@godep go test -v ./...
 
-.PHONY: all deps build clean image test release
+.PHONY: all build clean image test release
