@@ -1,6 +1,9 @@
 {
 	"ImportPath": "github.com/ehazlett/conduit",
-	"GoVersion": "go1.4.2",
+	"GoVersion": "go1.5",
+	"Packages": [
+		"./..."
+	],
 	"Deps": [
 		{
 			"ImportPath": "github.com/Sirupsen/logrus",

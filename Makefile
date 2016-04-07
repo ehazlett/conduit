@@ -7,14 +7,17 @@ REPO=ehazlett/$(NAME)
 
 all: deps build
 
-deps:
-	@godep restore
-
 clean:
 	@rm -rf Godeps/_workspace $(NAME)
 
-build: deps
+build:
 	@godep go build -a -tags 'netgo' -ldflags '-w -linkmode external -extldflags -static' .
+
+build-container:
+	@docker build -t $(NAME)-build -f Dockerfile.build .
+	@docker run -it -e BUILD -e TAG --name $(NAME)-build -ti $(NAME)-build make build
+	@docker cp $(NAME)-build:/go/src/github.com/$(REPO)/$(NAME) ./
+	@docker rm -fv $(NAME)-build
 
 image: build
 	@echo Building $(NAME) image $(TAG)
