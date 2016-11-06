@@ -1,0 +1,4 @@
+package: github.com/ehazlett/conduit
+import:
+- package: github.com/Sirupsen/logrus
+- package: github.com/spf13/cobra

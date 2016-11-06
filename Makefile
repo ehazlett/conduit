@@ -1,32 +1,26 @@
 CGO_ENABLED=0
 GOOS=linux
 GOARCH=amd64
-TAG=${TAG:-latest}
-NAME=conduit
-REPO=ehazlett/$(NAME)
+COMMIT=`git rev-parse --short HEAD`
+APP=conduit
+REPO?=ehazlett/$(APP)
+TAG?=latest
 
-all: deps build
-
-clean:
-	@rm -rf Godeps/_workspace $(NAME)
+all: build
 
 build:
-	@godep go build -a -tags 'netgo' -ldflags '-w -linkmode external -extldflags -static' .
+	@cd cmd/$(APP) && go build -ldflags "-w -X github.com/$(REPO)/version.GitCommit=$(COMMIT)" .
 
-build-container:
-	@docker build -t $(NAME)-build -f Dockerfile.build .
-	@docker run -it -e BUILD -e TAG --name $(NAME)-build -ti $(NAME)-build make build
-	@docker cp $(NAME)-build:/go/src/github.com/$(REPO)/$(NAME) ./
-	@docker rm -fv $(NAME)-build
+build-static:
+	@cd cmd/$(APP) && go build -a -tags "netgo static_build" -installsuffix netgo -ldflags "-w -X github.com/$(REPO)/version.GitCommit=$(COMMIT)" .
 
-image: build
-	@echo Building $(NAME) image $(TAG)
-	@docker build -t $(REPO):$(TAG) .
-
-release: deps build image
+release: image
 	@docker push $(REPO):$(TAG)
 
-test: clean 
-	@godep go test -v ./...
+test: build
+	@go test -v ./...
 
-.PHONY: all deps build clean image test release
+clean:
+	@rm -rf cmd/$(APP)/$(APP)
+
+.PHONY: build build-static release test clean
