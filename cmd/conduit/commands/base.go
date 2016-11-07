@@ -33,6 +33,11 @@ var RootCmd = &cobra.Command{
 		}
 	},
 	Run: func(cmd *cobra.Command, args []string) {
+		if len(repositories) == 0 {
+			cmd.Help()
+			logrus.Fatal("you must specify at least one repository")
+		}
+
 		cfg := &handler.HandlerConfig{
 			ListenAddr:   listenAddr,
 			Repositories: repositories,
